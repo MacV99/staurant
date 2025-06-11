@@ -1,0 +1,24 @@
+<div id="restaurant_view" class="flex-column">
+  <i class="bi bi-arrow-left-square-fill close-restaurant"></i>
+  <i class="bi bi-trash-fill delete-restaurant"></i>
+
+  <div class="details flex-column">
+    <h1 class="name">NAME RESTAURANT</h1>
+    <h3 class="stars">STARS:</h3>
+  </div>
+
+  <div class="new-dish flex-row">
+    <form class="flex-column" onsubmit="newDish(event)">
+      <h5>ADD NEW DISH</h5>
+      <div class="flex-row">
+        <input type="text" class="name-dish-input" placeholder="DISH NAME" />
+        <input type="number" class="stars-dish-input" placeholder="STARS (1-10)" min="1" max="10" />
+        <button class="flex-column" type="submit">ADD</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="list-dishes flex-row">
+    <!-- Aquí se cargan los platos desde JS -->
+  </div>
+</div>
