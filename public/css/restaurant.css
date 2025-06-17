@@ -23,11 +23,12 @@
 
 #restaurant_view h1 {
   text-transform: uppercase;
-  letter-spacing: 7px;
-  padding-left: 7px;
+  letter-spacing: 3px;
+  padding-left: 3px;
   margin-bottom: 14px;
   border-bottom: solid 2px var(--white-color);
   font-weight: 800;
+  font-size: 15px;
 }
 
 #restaurant_view .close-restaurant {
