@@ -88,20 +88,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Puedes agregar aquí más lógica para inicializar la vista, cargar datos, etc.
 });
-function renderRestaurants() {
-  const container = document.getElementById("restaurants-list");
-  container.innerHTML = "";
-  restaurants.forEach(r => {
-    const card = document.createElement("div");
-    card.classList.add("restaurant");
-    card.innerHTML = `
-        <h3>${r.name}</h3>
-        <ul><li>${r.stars}⭐</li></ul>
-      `;
-    card.addEventListener("click", () => openRestaurantView(r.id));
-    container.appendChild(card);
-  });
-}
 
 function openRestaurantView(id) {
   currentRestaurantId = id;
