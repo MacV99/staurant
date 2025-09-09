@@ -3,6 +3,10 @@ import Header from "../components/Header.astro";
 import RestaurantForm from "../components/RestaurantForm.astro";
 import RestaurantList from "../components/RestaurantList.astro";
 import RestaurantView from "../components/RestaurantView.astro";
+
+import "../css/global.css";
+import "../css/index.css";
+import "../css/restaurant.css";
 ---
 
 <html lang="en">
@@ -10,18 +14,311 @@ import RestaurantView from "../components/RestaurantView.astro";
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>STAURANT</title>
-    <link rel="stylesheet" href="/css/global.css" />
-    <link rel="stylesheet" href="/css/index.css" />
-    <link rel="stylesheet" href="/css/restaurant.css" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css"
+    />
   </head>
   <body>
     <Header />
     <RestaurantForm />
     <RestaurantList />
     <RestaurantView />
-
-    <script type="module" src="/scripts/main.js"></script>
-
   </body>
 </html>
+
+<script>
+  // Tipos
+  interface Dish {
+    id: number;
+    name: string;
+    stars: number; // 1..10 (decimales permitidos)
+  }
+
+  interface Restaurant {
+    id: number;
+    name: string;
+    stars: number; // promedio de platos
+    city: string;
+    dishes: Dish[];
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    let restaurants: Restaurant[] = [];
+    let currentRestaurantId: number | null = null;
+
+    // --- REFERENCIAS A ELEMENTOS ---
+    const restaurantForm = document.getElementById(
+      "new-restaurant-form",
+    ) as HTMLFormElement | null;
+    const dishForm = document.querySelector(
+      "#restaurant_view .new-dish form",
+    ) as HTMLFormElement | null;
+    const closeBtn = document.querySelector(
+      ".close-restaurant",
+    ) as HTMLElement | null;
+    const deleteRestaurantBtn = document.querySelector(
+      ".delete-restaurant",
+    ) as HTMLElement | null;
+
+    // Asegurar que existan los elementos requeridos
+    if (!restaurantForm) {
+      console.warn("No se encontró #new-restaurant-form");
+      return;
+    }
+    if (!dishForm) {
+      console.warn(
+        "No se encontró el form de nuevo plato en #restaurant_view .new-dish form",
+      );
+      return;
+    }
+    if (!closeBtn) {
+      console.warn("No se encontró .close-restaurant");
+      return;
+    }
+    if (!deleteRestaurantBtn) {
+      console.warn("No se encontró .delete-restaurant");
+      return;
+    }
+
+    // --- EVENTOS PRINCIPALES ---
+    restaurantForm.addEventListener("submit", newRestaurant);
+    dishForm.addEventListener("submit", newDish);
+
+    closeBtn.addEventListener("click", () => {
+      const view = document.getElementById("restaurant_view");
+      if (view) view.style.display = "none";
+      currentRestaurantId = null;
+    });
+
+    deleteRestaurantBtn.addEventListener("click", () => {
+      if (currentRestaurantId === null) return;
+      const confirmDelete = confirm(
+        "¿Estás seguro de que quieres eliminar este restaurante?",
+      );
+      if (!confirmDelete) return;
+      restaurants = restaurants.filter((r) => r.id !== currentRestaurantId);
+      saveRestaurants();
+      renderRestaurants();
+      const view = document.getElementById("restaurant_view");
+      if (view) view.style.display = "none";
+      currentRestaurantId = null;
+    });
+
+    // --- FUNCIONES LÓGICAS ---
+    function newRestaurant(event: SubmitEvent) {
+      event.preventDefault();
+      const input = document.getElementById(
+        "name-restaurant-input",
+      ) as HTMLInputElement | null;
+      if (!input) return;
+
+      const name = input.value.trim();
+      if (!name) return;
+
+      if (
+        restaurants.some(
+          (r) => r.name.trim().toLowerCase() === name.toLowerCase(),
+        )
+      ) {
+        alert("¡Ese restaurante ya está en la lista!");
+        return;
+      }
+
+      const restaurant: Restaurant = {
+        id: Date.now(),
+        name,
+        stars: 0,
+        city: "",
+        dishes: [],
+      };
+
+      restaurants.push(restaurant);
+      saveRestaurants();
+      input.value = "";
+      renderRestaurants();
+    }
+
+    function newDish(event: SubmitEvent) {
+      event.preventDefault();
+
+      const nameInput = document.querySelector(
+        ".name-dish-input",
+      ) as HTMLInputElement | null;
+      const starsInput = document.querySelector(
+        ".stars-dish-input",
+      ) as HTMLInputElement | null;
+      if (!nameInput || !starsInput) return;
+
+      const name = nameInput.value.trim();
+      const stars = parseFloat(starsInput.value.trim());
+
+      if (!name || currentRestaurantId === null) return;
+      if (Number.isNaN(stars) || stars < 1 || stars > 10) {
+        alert(
+          "La calificación debe ser un número entre 1 y 10 (puede tener decimales).",
+        );
+        return;
+      }
+
+      const restaurant = restaurants.find((r) => r.id === currentRestaurantId);
+      if (!restaurant) return;
+
+      if (
+        restaurant.dishes.some(
+          (d) => d.name.trim().toLowerCase() === name.toLowerCase(),
+        )
+      ) {
+        alert("¡Ese plato ya está en la lista!");
+        return;
+      }
+
+      const dish: Dish = { id: Date.now(), name, stars };
+      restaurant.dishes.push(dish);
+      updateRestaurantStars(restaurant);
+      renderDishes(currentRestaurantId);
+      saveRestaurants();
+
+      nameInput.value = "";
+      starsInput.value = "";
+    }
+
+    function renderDishes(idRestaurant: number) {
+      const list = document.querySelector(".list-dishes") as HTMLElement | null;
+      if (!list) return;
+
+      list.innerHTML = "";
+      const restaurant = restaurants.find((r) => r.id === idRestaurant);
+      if (!restaurant) return;
+
+      restaurant.dishes.forEach((d) => {
+        const dishCard = document.createElement("div");
+        dishCard.classList.add("dish");
+        dishCard.innerHTML = `
+          <i class="bi bi-trash-fill delete-dish" data-id="${d.id}"></i>
+          <div class="flex-row">
+            <h3>${escapeHtml(d.name)}</h3>
+          </div>
+          <ul>
+            <li>${d.stars}⭐</li>
+          </ul>
+        `;
+        list.appendChild(dishCard);
+      });
+
+      // re-registrar eventos de borrado de platos
+      document.querySelectorAll(".delete-dish").forEach((icon) => {
+        icon.addEventListener("click", () => {
+          const idAttr = (icon as HTMLElement).getAttribute("data-id");
+          const dishId = idAttr ? parseInt(idAttr, 10) : NaN;
+          if (!Number.isNaN(dishId) && confirm("¿Eliminar este plato?"))
+            deleteDish(dishId);
+        });
+      });
+    }
+
+    function renderRestaurants() {
+      const container = document.getElementById("restaurants-list");
+      if (!container) return;
+
+      container.innerHTML = "";
+      restaurants.forEach((r) => {
+        const card = document.createElement("div");
+        card.classList.add("restaurant");
+        card.innerHTML = `
+          <h3>${escapeHtml(r.name)}</h3>
+          <ul><li>${r.stars}⭐</li></ul>
+        `;
+        card.addEventListener("click", () => openRestaurantView(r.id));
+        container.appendChild(card);
+      });
+    }
+
+    function openRestaurantView(id: number) {
+      currentRestaurantId = id;
+      const view = document.getElementById("restaurant_view");
+      const restaurant = restaurants.find((r) => r.id === id);
+      if (!view || !restaurant) return;
+
+      const titleEl = view.querySelector("h1");
+      const starsEl = view.querySelector(".stars");
+      if (titleEl) titleEl.textContent = restaurant.name;
+      if (starsEl) starsEl.textContent = `${restaurant.stars}⭐`;
+
+      renderDishes(id);
+      (view as HTMLElement).style.display = "flex";
+    }
+
+    function deleteDish(dishId: number) {
+      if (currentRestaurantId === null) return;
+      const restaurant = restaurants.find((r) => r.id === currentRestaurantId);
+      if (!restaurant) return;
+
+      restaurant.dishes = restaurant.dishes.filter((d) => d.id !== dishId);
+      updateRestaurantStars(restaurant);
+      saveRestaurants();
+      renderDishes(currentRestaurantId);
+    }
+
+    function updateRestaurantStars(restaurant: Restaurant) {
+      const total = restaurant.dishes.reduce((sum, d) => sum + d.stars, 0);
+      restaurant.stars = restaurant.dishes.length
+        ? parseFloat((total / restaurant.dishes.length).toFixed(1))
+        : 0;
+
+      renderRestaurants();
+
+      if (currentRestaurantId === restaurant.id) {
+        const starsEl = document.querySelector("#restaurant_view .stars");
+        if (starsEl) starsEl.textContent = `${restaurant.stars}⭐`;
+      }
+    }
+
+    function saveRestaurants() {
+      localStorage.setItem("restaurants", JSON.stringify(restaurants));
+    }
+
+    function loadRestaurants() {
+      const data = localStorage.getItem("restaurants");
+      if (data) {
+        try {
+          const parsed = JSON.parse(data) as Restaurant[];
+          // Validación simple de esquema
+          if (Array.isArray(parsed)) {
+            restaurants = parsed.map((r) => ({
+              id: r.id,
+              name: r.name,
+              stars: typeof r.stars === "number" ? r.stars : 0,
+              city: r.city ?? "",
+              dishes: Array.isArray(r.dishes)
+                ? r.dishes.map((d) => ({
+                    id: d.id,
+                    name: d.name,
+                    stars: d.stars,
+                  }))
+                : [],
+            }));
+          } else {
+            restaurants = [];
+          }
+        } catch {
+          restaurants = [];
+        }
+      }
+      renderRestaurants();
+    }
+
+    // Pequeña ayuda para evitar inyecciones por texto sin escapar
+    function escapeHtml(str: string): string {
+      return str
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    // --- INICIALIZAR DATOS ---
+    loadRestaurants();
+  });
+</script>
